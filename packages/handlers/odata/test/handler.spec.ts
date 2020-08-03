@@ -6,6 +6,9 @@ import { addMock, resetMocks, Response } from 'fetchache';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { EventEmitter } from 'events';
+import { util } from 'prettier';
+import { inspect } from 'util';
+
 declare module 'fetchache' {
   type FetchMockFn = (request: Request) => Promise<Response>;
   function addMock(url: string, mockFn: FetchMockFn): void;
@@ -15,6 +18,12 @@ declare module 'fetchache' {
 const TripPinMetadata = readFileSync(resolve(__dirname, './fixtures/trippin-metadata.xml'), 'utf8');
 const PersonMockData = JSON.parse(readFileSync(resolve(__dirname, './fixtures/russellwhyte.json'), 'utf-8'));
 const TripMockData = JSON.parse(readFileSync(resolve(__dirname, './fixtures/trip.json'), 'utf-8'));
+
+const GraphMetadata = readFileSync(resolve(__dirname, './fixtures/graph-metadata.xml'), 'utf8');
+const DriveItemsMockData = JSON.parse(readFileSync(resolve(__dirname, './fixtures/driveItems.json'), 'utf-8'));
+const DriveItemMockData = JSON.parse(readFileSync(resolve(__dirname, './fixtures/driveItem.json'), 'utf-8'));
+const UsersMockData = JSON.parse(readFileSync(resolve(__dirname, './fixtures/users.json'), 'utf-8'));
+const DriveMockData = JSON.parse(readFileSync(resolve(__dirname, './fixtures/drive.json'), 'utf-8'));
 
 describe('odata', () => {
   let hooks: Hooks;
@@ -107,6 +116,58 @@ describe('odata', () => {
     expect(sentRequest!.method).toBe(correctMethod);
     expect(sentRequest!.url).toBe(correctUrl);
   });
+  it('should generate correct HTTP request for requesting an Entity in an EntitySet by ID', async () => {
+    addMock('https://graph.microsoft.com/v1.0/$metadata', async () => new Response(GraphMetadata));
+    addMock('https://graph.microsoft.com/v1.0/me?$select=id', async () => new Response(JSON.stringify(UsersMockData)));
+    addMock(
+      'https://graph.microsoft.com/v1.0/me/drive?$select=id',
+      async () => new Response(JSON.stringify(DriveMockData))
+    );
+    addMock(
+      'https://graph.microsoft.com/v1.0/me/drive/items?$select=id',
+      async () => new Response(JSON.stringify(DriveItemsMockData))
+    );
+
+    const correctUrl = `https://graph.microsoft.com/v1.0/me/drive/items('12345')?$select=id`;
+    const correctMethod = 'GET';
+    let sentRequest: Request;
+
+    addMock(correctUrl, async request => {
+      sentRequest = request;
+      return new Response(JSON.stringify(DriveItemMockData));
+    });
+
+    const source = await handler.getMeshSource({
+      name: 'Graph',
+      config: {
+        baseUrl: 'https://graph.microsoft.com/v1.0',
+      },
+      hooks,
+      cache,
+    });
+
+    const graphqlResult = await graphql({
+      schema: source.schema,
+      source: /* GraphQL */ `
+        {
+          me {
+            drive {
+              items(id: "12345") {
+                id
+              }
+            }
+          }
+        }
+      `,
+      contextValue: await source.contextBuilder({}),
+    });
+
+    console.log(inspect(graphqlResult.errors, { depth: null }));
+    // expect(graphqlResult.errors).toBeFalsy();
+    expect(sentRequest!.method).toBe(correctMethod);
+    expect(sentRequest!.url).toBe(correctUrl);
+  });
+
   it('should generate correct HTTP request for requesting a complex property', async () => {
     addMock('https://services.odata.org/TripPinRESTierService/$metadata', async () => new Response(TripPinMetadata));
     const correctUrl = `https://services.odata.org/TripPinRESTierService/Airports('KSFO')?$select=IcaoCode,Location`;

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0"
+    xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+    <edmx:DataServices>
+        <Schema Namespace="microsoft.graph" Alias="graph"
+            xmlns="http://docs.oasis-open.org/odata/ns/edm">
+            <EntityType Name="entity" Abstract="true">
+                <Key>
+                    <PropertyRef Name="id" />
+                </Key>
+                <Property Name="id" Type="Edm.String" Nullable="false" />
+            </EntityType>
+            <EntityType Name="baseItem" BaseType="graph.entity" Abstract="true">
+                <Property Name="name" Type="Edm.String" />
+            </EntityType>
+            <EntityType Name="directoryObject" BaseType="graph.entity" OpenType="true">
+                <Property Name="deletedDateTime" Type="Edm.DateTimeOffset" />
+            </EntityType>
+            <EntityType Name="user" BaseType="graph.directoryObject" OpenType="true">
+                <NavigationProperty Name="drive" Type="graph.drive" ContainsTarget="true" />
+            </EntityType>
+            <EntityType Name="drive" BaseType="graph.entity">
+                <NavigationProperty Name="items" Type="Collection(graph.driveItem)" ContainsTarget="true" />
+            </EntityType>
+            <EntityType Name="driveItem" BaseType="graph.baseItem" OpenType="true">
+            </EntityType>
+            <Singleton Name="me" Type="microsoft.graph.user">
+            </Singleton>
+        </Schema>
+    </edmx:DataServices>
+</edmx:Edmx>

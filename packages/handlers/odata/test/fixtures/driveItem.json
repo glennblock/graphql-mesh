@@ -1,0 +1,5 @@
+{
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('person%40user.com')/drive/items/$entity",
+    "id": "12345",
+    "name": "Document1.docx"
+}

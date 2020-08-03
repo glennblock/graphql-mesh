@@ -1,0 +1,10 @@
+{
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#Collection(graph.driveItem)",
+    "value": [
+        {
+            "@odata.type": "#graph.driveItem",
+            "id": "12345",
+            "name": "Document1.docx"
+        }
+    ]
+}
