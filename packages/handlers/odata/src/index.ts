@@ -55,6 +55,7 @@ interface EntityTypeExtensions {
 const handler: MeshHandlerLibrary<YamlConfig.ODataHandler> = {
   async getMeshSource({ name, config, cache }) {
     const metadataUrl = urljoin(config.baseUrl, '$metadata');
+    const isGraph = config.baseUrl.startsWith('https://graph.microsoft.com');
     const metadataText = await readFileOrUrlWithCache<string>(config.metadata || metadataUrl, cache, {
       headers: config.schemaHeaders,
       allowUnknownExtensions: true,
@@ -646,6 +647,7 @@ const handler: MeshHandlerLibrary<YamlConfig.ODataHandler> = {
             args: {
               ...commonArgs,
               ...(isList && { queryOptions: { type: 'QueryOptions' } }),
+              ...(isGraph && { id: { type: 'String' } }),
             },
             extensions: { navigationPropertyElement },
             resolve: async (root, args, context, info) => {
@@ -654,6 +656,9 @@ const handler: MeshHandlerLibrary<YamlConfig.ODataHandler> = {
               }
               const url = new URL(root['@odata.id']);
               url.href = urljoin(url.href, '/' + navigationPropertyName);
+              if (isGraph && args.id) {
+                url.href = url.href + `('${args.id}')`;
+              }
               const parsedInfoFragment = parseResolveInfo(info) as ResolveTree;
               const searchParams = prepareSearchParams(parsedInfoFragment, info.schema);
               searchParams.forEach((value, key) => {
